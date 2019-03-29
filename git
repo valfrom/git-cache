@@ -1,0 +1,40 @@
+#!/bin/bash
+
+search_repo () {
+    for var in "$@"
+    do
+        if [[ "$var" == *"@"* ]] ; then
+            echo $var
+        fi
+    done
+}
+
+CACHE_DIR="/home/user/git-cache"
+OLD_PWD=`pwd`
+
+if [ $# -eq 0 ] ; then
+    /usr/bin/git
+    exit $?
+fi
+
+if [ "$1" == "clone" ] ; then
+    shift
+    repo=`search_repo "$@"`
+    folder=$CACHE_DIR/$(echo "$repo" | base64)
+    
+    if [ ! -d "$folder" ]; then
+        mkdir -p $folder
+        /usr/bin/flock -w 7200 $folder.lock /usr/bin/git clone "$@" $folder
+    else
+        cd $folder
+        /usr/bin/flock -w 7200 $folder.lock /usr/bin/git pull
+    fi
+    cd $OLD_PWD
+    #TODO: lock reference
+    /usr/bin/git clone --reference $folder "$@"
+    exit $?
+fi
+
+/usr/bin/git "$@"
+
+exit $?
